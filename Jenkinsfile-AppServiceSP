@@ -43,7 +43,7 @@ pipeline {
         sh "ls -lh app.zip"
 
         // 📤 Upload ZIP to Artifactory
-        jf "rt u nwa.zip example-repo-local/dotnet/${params.IMAGE_TAG}/ --flat=true"
+        jf "rt u app.zip example-repo-local/dotnet/${params.IMAGE_TAG}/ --flat=true"
 
         // 📝 Publish build info
         jf "rt bp"
@@ -70,7 +70,7 @@ pipeline {
 
         // 🔽 Download published ZIP from Artifactory
         retry(3) {
-          jf "rt dl example-repo-local/dotnet/${params.IMAGE_TAG}/nwa.zip --flat=true"
+          jf "rt dl example-repo-local/dotnet/${params.IMAGE_TAG}/app.zip --flat=true"
         }
 
         // 🚀 Deploy the JAR to App Service
@@ -78,7 +78,7 @@ pipeline {
           az webapp deploy \
             --resource-group BelugaBoxResourceGroup01 \
             --name NWAAppServiceCodeTEST \
-            --src-path nwa.zip \
+            --src-path app.zip \
             --type zip
         """
       }

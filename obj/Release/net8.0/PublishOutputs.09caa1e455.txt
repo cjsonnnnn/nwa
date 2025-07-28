@@ -1,0 +1,7 @@
+/home/lab3/cicd/nwa/publish/nwa
+/home/lab3/cicd/nwa/publish/appsettings.Development.json
+/home/lab3/cicd/nwa/publish/appsettings.json
+/home/lab3/cicd/nwa/publish/nwa.dll
+/home/lab3/cicd/nwa/publish/nwa.deps.json
+/home/lab3/cicd/nwa/publish/nwa.runtimeconfig.json
+/home/lab3/cicd/nwa/publish/nwa.pdb

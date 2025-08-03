@@ -57,21 +57,4 @@ pipeline {
       }
     }
   }
-
-  // post {
-  //   always {
-  //     node('agent-azure') {
-  //       script {
-  //         // To prevent credentials being cached in memory or reused in other builds, and improve security
-  //         sh "az logout || true"
-
-  //         // Deletes all files/folders from the Jenkins agent's workspace
-  //         // Ensures next builds start fresh, avoiding stale or leftover files (e.g., JARs, artifacts, Dockerfiles, logs).
-  //         sh "ls -alR ${env.WORKSPACE}"
-  //         cleanWs()
-  //         sh "ls -alR ${env.WORKSPACE}"
-  //       }
-  //     }
-  //   }
-  // }
 }

@@ -1,5 +1,5 @@
 pipeline {
-  agent { label 'agent-jenkins' }
+  agent { label 'agent-azure-net' }
 
   tools {
     jfrog 'jfrog-cli'

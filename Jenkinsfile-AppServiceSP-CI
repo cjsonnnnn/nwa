@@ -16,15 +16,33 @@ pipeline {
     )
   }
 
+  environment {
+    APP_NAME = "Simple Dotnet App"
+    APP_VERSION = "${params.IMAGE_TAG}"
+    COMPONENT = "reporting-service"
+    REGISTRY_HOST = "jfrog.fata-organa.com"
+    ARTIFACTORY_BASE = "https://${REGISTRY_HOST}/artifactory"
+    ZIP_PATH = "app.zip"
+    REPO = "example-repo-local"
+  }
+
   stages {
     stage('Build and Publish to Artifactory') {
       steps {
+        script {
+          if (!params.IMAGE_TAG) {
+            error "IMAGE_TAG is required"
+          }
+        }
         sh "pwd"
         sh "ls -la"
         sh "ls -la $HOME"
 
         // ⚙️ Set server to use 
         jf 'c use jfart-fos-1'
+
+        // 🧪 sanity check connectivity
+        sh 'jf rt ping'
 
         // 🔨 Restore and build the .NET project
         retry(3) {
@@ -33,14 +51,29 @@ pipeline {
         }
 
         // 📦 Zip published files
-        sh "cd publish && zip -r ../app.zip . && cd .."
-        sh "ls -lh app.zip"
+        sh "cd publish && zip -r ../${ZIP_PATH} . && cd .."
+        sh "ls -lh ${ZIP_PATH}"
 
-        // 📤 Upload ZIP to Artifactory
-        jf "rt u app.zip example-repo-local/dotnet/${params.IMAGE_TAG}/ --flat=true"
+        // Associate build info context before upload
+        jf "rt bce ${APP_NAME} ${APP_VERSION}"
+        jf "rt u ${ZIP_PATH} ${REPO}/dotnet/${APP_VERSION}/ --flat=true"
+        jf "rt bp ${APP_NAME} ${APP_VERSION}"
+      }
+    }
 
-        // 📝 Publish build info
-        jf "rt bp"
+    stage('Report Release to DevOps Portal') {
+      steps {
+        script {
+          reportRelease(
+            applicationName: env.APP_NAME,
+            applicationVersion: env.APP_VERSION,
+            applicationComponent: env.COMPONENT,
+            repositoryName: env.REGISTRY_HOST,
+            artifactName: "${COMPONENT}/${APP_VERSION}/${ZIP_PATH}",
+            tags: env.APP_VERSION,
+            artifactURL: "${ARTIFACTORY_BASE}/${REPO}/dotnet/${APP_VERSION}/${ZIP_PATH}"
+          )
+        }
       }
     }
   }

@@ -23,6 +23,17 @@ pipeline {
   }
 
   stages {
+    stage('Approve for Production') {
+      steps {
+        script {
+          timeout(time: 1, unit: 'HOURS') {
+            input message: "Approve deployment to Production?", ok: "Yes, deploy", 
+                  submitter: "team-lead, devops"
+          }
+        }
+      }
+    }
+
     stage('Deploy to Azure App Service') {
       steps {
         sh "git --version"

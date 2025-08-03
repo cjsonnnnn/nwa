@@ -1,0 +1,47 @@
+pipeline {
+  agent { label 'agent-jenkins' }
+
+  tools {
+    jfrog 'jfrog-cli'
+  }
+
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '5'))
+  }
+
+  parameters {
+    string(
+      name: 'IMAGE_TAG',
+      description: 'Version tag (used for .NET publish ZIP and artifact versioning)'
+    )
+  }
+
+  stages {
+    stage('Build and Publish to Artifactory') {
+      steps {
+        sh "pwd"
+        sh "ls -la"
+        sh "ls -la $HOME"
+
+        // ⚙️ Set server to use 
+        jf 'c use jfart-fos-1'
+
+        // 🔨 Restore and build the .NET project
+        retry(3) {
+          sh "dotnet restore"
+          sh "dotnet publish -c Release -o publish"
+        }
+
+        // 📦 Zip published files
+        sh "cd publish && zip -r ../app.zip . && cd .."
+        sh "ls -lh app.zip"
+
+        // 📤 Upload ZIP to Artifactory
+        jf "rt u app.zip example-repo-local/dotnet/${params.IMAGE_TAG}/ --flat=true"
+
+        // 📝 Publish build info
+        jf "rt bp"
+      }
+    }
+  }
+}

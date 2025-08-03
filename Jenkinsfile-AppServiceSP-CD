@@ -57,15 +57,15 @@ pipeline {
       }
     }
 
-    // stage('Approve for Production') {
-    //   steps {
-    //     script {
-    //       timeout(time: 1, unit: 'HOURS') {
-    //         input message: "Approve deployment to Production?", ok: "Yes, deploy", 
-    //               submitter: "team-lead, devops"
-    //       }
-    //     }
-    //   }
-    // }
+    stage('Approve for Production') {
+      steps {
+        script {
+          timeout(time: 1, unit: 'HOURS') {
+            input message: "Approve deployment to Production?", ok: "Yes, deploy", 
+                  submitter: "team-lead, devops"
+          }
+        }
+      }
+    }
   }
 }

@@ -17,7 +17,7 @@ pipeline {
   }
 
   environment {
-    APP_NAME = "Simple Dotnet App"
+    APP_NAME = "simple-dotnet-app"
     APP_VERSION = "${params.IMAGE_TAG}"
     COMPONENT = "reporting-service"
     REGISTRY_HOST = "jfrog.fata-organa.com"

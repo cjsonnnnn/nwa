@@ -19,12 +19,12 @@ pipeline {
   environment {
     APP_NAME = "simple-dotnet-app"
     APP_VERSION = "${params.IMAGE_TAG}"
+    ARTIFACT_PATH = "${REPO}/dotnet/${APP_VERSION}/${ZIP_PATH}"
+    ARTIFACTORY_BASE = "https://${REGISTRY_HOST}/artifactory"
     COMPONENT = "reporting-service"
     REGISTRY_HOST = "jfrog.fata-organa.com"
-    ARTIFACTORY_BASE = "https://${REGISTRY_HOST}/artifactory"
-    ZIP_PATH = "app.zip"
     REPO = "example-repo-local"
-    ARTIFACT_PATH = "${REPO}/dotnet/${APP_VERSION}/${ZIP_PATH}"
+    ZIP_PATH = "app.zip"
   }
 
   stages {

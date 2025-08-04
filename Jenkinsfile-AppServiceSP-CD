@@ -82,9 +82,22 @@ pipeline {
             --type zip
         """
 
+        // map display name to actual targetService label
+        def envMap = [
+          DEVL:    'env-devl',
+          STAGING: 'env-staging',
+          TEST:    'env-test',
+          PROD:    'env-prod'
+        ]
+        def targetService = envMap[params.DEPLOY_ENV]
+        if (!targetService) {
+          error "Unknown deployment environment: ${params.DEPLOY_ENV}"
+        }
+        echo "Deploying to ${params.DEPLOY_ENV} (DevOps Portal label: ${targetService})"
+
         // Report deployment to DevOps Portal
         reportDeployOperation(
-          targetService: params.DEPLOY_ENV,
+          targetService: targetService,
           applicationName: env.APP_NAME,
           applicationVersion: env.APP_VERSION,
           tags: "manual-test,build-${env.BUILD_NUMBER}"

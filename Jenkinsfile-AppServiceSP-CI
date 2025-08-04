@@ -64,7 +64,7 @@ pipeline {
     stage('Report Release to DevOps Portal') {
       steps {
         script {
-          reportRelease(
+          reportArtifactRelease(
             applicationName: env.APP_NAME,
             applicationVersion: env.APP_VERSION,
             applicationComponent: env.COMPONENT,

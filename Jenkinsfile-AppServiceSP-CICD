@@ -154,7 +154,7 @@ pipeline {
 
         // Report deployment to DevOps Portal
         reportDeployOperation(
-          targetService: params.DEPLOY_ENV,
+          targetService: "DEVL",
           applicationName: env.APP_NAME,
           applicationVersion: env.APP_VERSION,
           tags: env.APP_VERSION

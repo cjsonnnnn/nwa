@@ -14,15 +14,38 @@ pipeline {
       name: 'IMAGE_TAG',
       description: 'Version tag (used for .NET publish ZIP and artifact versioning)'
     )
+    choice(
+      name: 'DEPLOY_ENV',
+      choices: ['STAGING', 'PROD', 'DEVL', 'TEST'],
+      description: 'Select target environment for deployment'
+    )
   }
 
   environment {
+    APP_NAME = "simple-dotnet-app"
+    APP_VERSION = "${params.IMAGE_TAG}"
     AZURE_APP_ID = credentials('azure-app-id')
     AZURE_SECRET_KEY = credentials('azure-secret-key')
     AZURE_TENANT_ID = credentials('azure-tenant-id')
+    RESOURCE_GROUP = "BelugaBoxResourceGroup01"
+    WEBAPP_NAME = "NWAAppServiceCodeTEST"
   }
 
   stages {
+    stage('Approve for Production') {
+      when {
+        expression { params.DEPLOY_ENV == 'PROD' }
+      }
+      steps {
+        script {
+          timeout(time: 1, unit: 'HOURS') {
+            input message: "Approve deployment to Production?", ok: "Yes, deploy", 
+                  submitter: "manager"
+          }
+        }
+      }
+    }
+
     stage('Deploy to Azure App Service') {
       steps {
         sh "git --version"
@@ -41,30 +64,27 @@ pipeline {
         '''
         sh "az account show"
 
-      //   // 🔽 Download published ZIP from Artifactory
-      //   retry(3) {
-      //     jf "rt dl example-repo-local/dotnet/${params.IMAGE_TAG}/app.zip --flat=true"
-      //   }
-
-      //   // 🚀 Deploy the JAR to App Service
-      //   sh """
-      //     az webapp deploy \
-      //       --resource-group BelugaBoxResourceGroup01 \
-      //       --name NWAAppServiceCodeTEST \
-      //       --src-path app.zip \
-      //       --type zip
-      //   """
-      }
-    }
-
-    stage('Approve for Production') {
-      steps {
-        script {
-          timeout(time: 1, unit: 'HOURS') {
-            input message: "Approve deployment to Production?", ok: "Yes, deploy", 
-                  submitter: "team-lead, devops"
-          }
+        // 🔽 Download published ZIP from Artifactory
+        retry(3) {
+          jf "rt dl example-repo-local/dotnet/${params.IMAGE_TAG}/app.zip --flat=true"
         }
+
+        // 🚀 Deploy the JAR to App Service
+        sh """
+          az webapp deploy \
+            --resource-group ${RESOURCE_GROUP} \
+            --name ${WEBAPP_NAME} \
+            --src-path app.zip \
+            --type zip
+        """
+
+        // Report deployment to DevOps Portal
+        reportDeployOperation(
+          targetService: params.DEPLOY_ENV,
+          applicationName: env.APP_NAME,
+          applicationVersion: env.APP_VERSION,
+          tags: "manual-test,build-${env.BUILD_NUMBER}"
+        )
       }
     }
   }

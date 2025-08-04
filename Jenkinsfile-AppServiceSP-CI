@@ -42,7 +42,7 @@ pipeline {
         jf 'c use jfart-fos-1'
 
         // 🧪 sanity check connectivity
-        sh 'jf rt ping'
+        jf 'rt ping'
 
         // 🔨 Restore and build the .NET project
         retry(3) {

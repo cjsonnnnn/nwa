@@ -158,7 +158,6 @@ pipeline {
             targetService: "DEVL",
             applicationName: env.APP_NAME,
             applicationVersion: env.APP_VERSION,
-            applicationComponent: env.COMPONENT,
             tags: env.APP_VERSION
           )
         }

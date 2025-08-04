@@ -27,7 +27,7 @@ pipeline {
   }
 
   stages {
-    stage('Build and Publish to Artifactory') {
+    stage('Build and Package') {
       steps {
         script {
           if (!params.IMAGE_TAG) {
@@ -54,7 +54,21 @@ pipeline {
         sh "cd publish && zip -r ../${ZIP_PATH} . && cd .."
         sh "ls -lh ${ZIP_PATH}"
 
-        // Associate build info context before upload
+        // Report the build and its produced artifact
+        script {
+          reportBuild(
+            applicationName: env.APP_NAME,
+            applicationVersion: env.APP_VERSION,
+            applicationComponent: env.COMPONENT,
+            artifactFileName: env.ZIP_PATH,
+            artifactFileSizeLimit: 50 * 1024 * 1024 // e.g., 50MB cap
+          )
+        }
+      }
+    }
+
+    stage('Publish to Artifactory') {
+      steps {
         jf "rt bce ${APP_NAME} ${APP_VERSION}"
         jf "rt u ${ZIP_PATH} ${REPO}/dotnet/${APP_VERSION}/ --flat=true"
         jf "rt bp ${APP_NAME} ${APP_VERSION}"

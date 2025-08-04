@@ -16,7 +16,7 @@ pipeline {
     )
     choice(
       name: 'DEPLOY_ENV',
-      choices: ['STAGING', 'PROD', 'DEVL', 'TEST'],
+      choices: ['staging', 'prod', 'devl', 'test'],
       description: 'Select target environment for deployment'
     )
   }

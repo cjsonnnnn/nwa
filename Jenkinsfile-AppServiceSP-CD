@@ -64,6 +64,9 @@ pipeline {
         '''
         sh "az account show"
 
+        // ⚙️ Set server to use 
+        jf 'c use jfart-fos-1'
+
         // 🔽 Download published ZIP from Artifactory
         retry(3) {
           jf "rt dl example-repo-local/dotnet/${params.IMAGE_TAG}/app.zip --flat=true"

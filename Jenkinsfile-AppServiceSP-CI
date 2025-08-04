@@ -24,6 +24,7 @@ pipeline {
     ARTIFACTORY_BASE = "https://${REGISTRY_HOST}/artifactory"
     ZIP_PATH = "app.zip"
     REPO = "example-repo-local"
+    ARTIFACT_PATH = "${REPO}/dotnet/${APP_VERSION}/${ZIP_PATH}"
   }
 
   stages {
@@ -60,8 +61,8 @@ pipeline {
             applicationName: env.APP_NAME,
             applicationVersion: env.APP_VERSION,
             applicationComponent: env.COMPONENT,
-            artifactFileName: env.ZIP_PATH,
-            artifactFileSizeLimit: 50 * 1024 * 1024 // e.g., 50MB cap
+            artifactFileName: env.ARTIFACT_PATH,
+            artifactFileSizeLimit: 50 * 1024 * 1024 // i.e., 50MB cap
           )
         }
       }
@@ -83,9 +84,9 @@ pipeline {
             applicationVersion: env.APP_VERSION,
             applicationComponent: env.COMPONENT,
             repositoryName: env.REGISTRY_HOST,
-            artifactName: "${COMPONENT}/${APP_VERSION}/${ZIP_PATH}",
+            artifactName: env.ARTIFACT_PATH,
             tags: env.APP_VERSION,
-            artifactURL: "${ARTIFACTORY_BASE}/${REPO}/dotnet/${APP_VERSION}/${ZIP_PATH}"
+            artifactURL: "${ARTIFACTORY_BASE}/${ARTIFACT_PATH}"
           )
         }
       }

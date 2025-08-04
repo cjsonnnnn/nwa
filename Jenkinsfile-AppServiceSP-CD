@@ -101,7 +101,7 @@ pipeline {
             targetService: targetService,
             applicationName: env.APP_NAME,
             applicationVersion: env.APP_VERSION,
-            tags: "manual-test,build-${env.BUILD_NUMBER}"
+            tags: env.APP_VERSION
           )
         }
       }

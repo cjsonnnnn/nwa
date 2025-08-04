@@ -61,7 +61,7 @@ pipeline {
             applicationName: env.APP_NAME,
             applicationVersion: env.APP_VERSION,
             applicationComponent: env.COMPONENT,
-            artifactFileName: env.ARTIFACT_PATH,
+            artifactFileName: env.ZIP_PATH,
             artifactFileSizeLimit: 50 * 1024 * 1024 // i.e., 50MB cap
           )
         }
@@ -84,7 +84,7 @@ pipeline {
             applicationVersion: env.APP_VERSION,
             applicationComponent: env.COMPONENT,
             repositoryName: env.REGISTRY_HOST,
-            artifactName: env.ARTIFACT_PATH,
+            artifactName: "${COMPONENT}/${APP_VERSION}/${ZIP_PATH}",
             tags: env.APP_VERSION,
             artifactURL: "${ARTIFACTORY_BASE}/${ARTIFACT_PATH}"
           )

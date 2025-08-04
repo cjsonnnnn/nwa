@@ -68,6 +68,7 @@ pipeline {
         retry(3) {
           jf "rt dl example-repo-local/dotnet/${params.IMAGE_TAG}/app.zip --flat=true"
         }
+        sh "ls -la"
 
         // 🚀 Deploy the JAR to App Service
         sh """

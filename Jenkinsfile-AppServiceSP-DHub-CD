@@ -6,10 +6,6 @@ pipeline {
   }
 
   parameters {
-    string(
-      name: 'IMAGE_TAG',
-      description: 'Version tag to deploy (used as Docker image tag)'
-    )
     choice(
       name: 'DEPLOY_ENV',
       choices: ['DEVL', 'TEST', 'STAGING', 'PROD'],
@@ -19,7 +15,7 @@ pipeline {
 
   environment {
     APP_NAME = "nwa"
-    APP_VERSION = "${params.IMAGE_TAG}"
+    APP_VERSION = ""
     DOCKERHUB_REPO = "jpiay/${APP_NAME}"
     AZURE_APP_ID = credentials('azure-app-id')
     AZURE_SECRET_KEY = credentials('azure-secret-key')
@@ -28,6 +24,15 @@ pipeline {
   }
 
   stages {
+    stage('Prepare Version') {
+      steps {
+        script {
+          currentBuild.displayName = "${params.IMAGE_TAG.tokenize(' ')[0]}"
+          env.APP_VERSION = "${params.IMAGE_TAG.tokenize(' ')[0]}"
+        }
+      }
+    }
+
     stage('Approval for Production') {
       when {
         expression { params.DEPLOY_ENV == 'PROD' }
@@ -81,8 +86,8 @@ pipeline {
           reportDeployOperation(
             targetService: params.DEPLOY_ENV,
             applicationName: env.APP_NAME,
-            applicationVersion: env.APP_VERSION,
-            tags: env.APP_VERSION
+            applicationVersion: params.IMAGE_TAG,
+            tags: params.IMAGE_TAG
           )
         }
       }

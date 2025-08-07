@@ -3,7 +3,6 @@ pipeline {
 
   options {
     buildDiscarder(logRotator(numToKeepStr: '5'))
-    skipDefaultCheckout(true)
   }
 
   parameters {
@@ -55,12 +54,6 @@ pipeline {
           echo "Resolved version: ${env.FULL_VERSION}"
           currentBuild.displayName = "${env.FULL_VERSION}"
         }
-      }
-    }
-
-    stage('Checkout') {
-      steps {
-        checkout scm
       }
     }
 

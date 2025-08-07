@@ -10,7 +10,6 @@ pipeline {
 
   environment {
     APP_NAME = "nwa"
-    APP_VERSION = ""
     DOCKERHUB_REPO = "jpiay/${APP_NAME}"
     AZURE_APP_ID = credentials('azure-app-id')
     AZURE_SECRET_KEY = credentials('azure-secret-key')
@@ -26,7 +25,7 @@ pipeline {
           APP_VERSION = "${params.IMAGE_TAG.tokenize(' ')[0]}"
           echo "🏷️ IMAGE_TAG.tokenize(' '): ${params.IMAGE_TAG.tokenize(' ')}"
           echo "🏷️ IMAGE_TAG.tokenize(' ')[0]: ${params.IMAGE_TAG.tokenize(' ')[0]}"
-          echo "🏷️ APP_VERSION: ${env.APP_VERSION}"
+          echo "🏷️ APP_VERSION: ${APP_VERSION}"
           echo "🏷️ IMAGE_TAG: ${params.IMAGE_TAG}"
         }
       }
@@ -76,17 +75,17 @@ pipeline {
             az webapp config container set \
               --resource-group ${RESOURCE_GROUP} \
               --name ${targetWebApp} \
-              --container-image-name ${DOCKERHUB_REPO}:${env.APP_VERSION} \
+              --container-image-name ${DOCKERHUB_REPO}:${APP_VERSION} \
               --container-registry-url https://index.docker.io
           """
-          echo "✔️ Deployed ${DOCKERHUB_REPO}:${env.APP_VERSION} to ${targetWebApp}"
+          echo "✔️ Deployed ${DOCKERHUB_REPO}:${APP_VERSION} to ${targetWebApp}"
 
           // 🧾 Report deployment to DevOps Portal
           reportDeployOperation(
             targetService: params.DEPLOY_ENV,
             applicationName: env.APP_NAME,
-            applicationVersion: env.APP_VERSION,
-            tags: env.APP_VERSION
+            applicationVersion: APP_VERSION,
+            tags: APP_VERSION
           )
         }
       }

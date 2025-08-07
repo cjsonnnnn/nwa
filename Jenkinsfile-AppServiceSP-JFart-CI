@@ -14,12 +14,12 @@ pipeline {
     string(
       name: 'MAJOR_VERSION',
       defaultValue: '1',
-      description: 'The major version number of the build (e.g., 1 for v1.x.x)'
+      description: 'The major version number of the build (e.g., 1 for 1.x.x)'
     )
     string(
       name: 'MINOR_VERSION',
       defaultValue: '1',
-      description: 'The minor version number of the build (e.g., 0 for v1.0.x)'
+      description: 'The minor version number of the build (e.g., 0 for 1.0.x)'
     )
     string(
       name: 'PATCH',
@@ -53,13 +53,13 @@ pipeline {
             patch = params.PATCH.toInteger()
             echo "Using manually provided patch version: ${patch}"
           } else {
-            // Auto-increment based on previous build's display name (e.g., "v1.2.3")
+            // Auto-increment based on previous build's display name (e.g., "1.2.3")
             def lastBuild = currentBuild.rawBuild.getPreviousSuccessfulBuild()
             if (lastBuild != null) {
               def lastName = lastBuild.getDisplayName()
-              def matcher = lastName =~ /v\d+\.\d+\.(\d+)/
+              def matcher = lastName =~ /^(\d+)\.(\d+)\.(\d+)$/
               if (matcher.matches()) {
-                patch = matcher[0][1].toInteger() + 1
+                patch = matcher[0][3].toInteger() + 1
                 echo "Auto-incremented patch from last build: ${patch}"
               } else {
                 patch = 1
@@ -75,10 +75,12 @@ pipeline {
           env.FULL_VERSION = "${major}.${minor}.${patch}"
           echo "Resolved version: ${env.FULL_VERSION}"
 
-          currentBuild.displayName = "v${env.FULL_VERSION}"
+          // Set display name as just x.x.x
+          currentBuild.displayName = "${env.FULL_VERSION}"
         }
       }
     }
+
 
     stage('Checkout') {
       steps {

@@ -7,36 +7,19 @@ pipeline {
 
   options {
     buildDiscarder(logRotator(numToKeepStr: '5'))
+    skipDefaultCheckout(true)
   }
 
   parameters {
-    string(
-      name: 'MAJOR_VERSION',
-      defaultValue: '1',
-      description: 'The major version number of the build (e.g., 1 for v1.x.x)'
-    )
-    string(
-      name: 'MINOR_VERSION',
-      defaultValue: '1',
-      description: 'The minor version number of the build (e.g., 0 for v1.0.x)'
-    )
-    string(
-      name: 'PATCH',
-      defaultValue: '',
-      description: 'Optional: Manually override the patch version (leave blank to auto-increment)'
-    )
+    string(name: 'MAJOR_VERSION', defaultValue: '1', description: 'Major version')
+    string(name: 'MINOR_VERSION', defaultValue: '1', description: 'Minor version')
+    string(name: 'PATCH', defaultValue: '', description: 'Optional patch override')
   }
 
   environment {
-    APP_NAME = "simple-dotnet-app"
-    APP_VERSION = "${params.IMAGE_TAG}"
-    ARTIFACT_PATH = "${REPO}/dotnet/${APP_VERSION}/${ZIP_PATH}"
-    ARTIFACTORY_BASE = "https://${REGISTRY_HOST}/artifactory"
+    APP_NAME = "nwa"
+    DOCKERHUB_REPO = "jpiay/${APP_NAME}"
     COMPONENT = "reporting-service"
-    REGISTRY_HOST = "jfrog.fata-organa.com"
-    REPO = "example-repo-local"
-    ZIP_PATH = "app.zip"
-    VERSION_FILE = 'version.txt'
   }
 
   stages {
@@ -52,85 +35,87 @@ pipeline {
             patch = params.PATCH.toInteger()
             echo "Using manually provided patch version: ${patch}"
           } else {
-            // Auto-increment based on previous build
+            // Auto-increment based on previous build's display name (e.g., "1.2.3")
             def lastBuild = currentBuild.rawBuild.getPreviousSuccessfulBuild()
             if (lastBuild != null) {
-              def lastPatch = lastBuild.getEnvironment(listener).get('PATCH')
-              if (lastPatch?.isInteger()) {
-                patch = lastPatch.toInteger() + 1
+              def lastName = lastBuild.getDisplayName()
+              def matcher = lastName =~ /^(\d+)\.(\d+)\.(\d+)$/
+              if (matcher.matches()) {
+                patch = matcher[0][3].toInteger() + 1
+                echo "Auto-incremented patch from last build: ${patch}"
+              } else {
+                patch = 1
+                echo "Previous build name didn't match version pattern, starting from patch: ${patch}"
               }
             } else {
-              patch = 1  // Starting patch version if no previous builds
+              patch = 1
+              echo "No previous build found, starting from patch: ${patch}"
             }
-            echo "Auto-incremented patch version: ${patch}"
           }
 
           env.PATCH = patch.toString()
           env.FULL_VERSION = "${major}.${minor}.${patch}"
+          env.IMAGE_TAG = "${env.FULL_VERSION}"
           echo "Resolved version: ${env.FULL_VERSION}"
+          currentBuild.displayName = "${env.FULL_VERSION}"
         }
       }
     }
 
-    stage('Build and Package') {
+    stage('Checkout') {
       steps {
-        script {
-          if (!params.IMAGE_TAG) {
-            error "IMAGE_TAG is required"
-          }
-        }
-        sh "pwd"
-        sh "ls -la"
-        sh "ls -la $HOME"
+        checkout scm
+      }
+    }
 
-        // ⚙️ Set server to use 
-        jf 'c use jfart-fos-1'
+    stage('Build and Dockerize') {
+      steps {
+        sh "dotnet restore"
+        sh "dotnet publish -c Release -o publish"
 
-        // 🧪 sanity check connectivity
-        jf 'rt ping'
-
-        // 🔨 Restore and build the .NET project
-        retry(3) {
-          sh "dotnet restore"
-          sh "dotnet publish -c Release -o publish"
-        }
-
-        // 📦 Zip published files
-        sh "cd publish && zip -r ../${ZIP_PATH} . && cd .."
-        sh "ls -lh ${ZIP_PATH}"
+        // Build Docker image
+        sh """
+          docker build -t ${DOCKERHUB_REPO}:${IMAGE_TAG} -t ${DOCKERHUB_REPO}:latest .
+        """
 
         // Report the build and its produced artifact
         script {
           reportBuild(
             applicationName: env.APP_NAME,
-            applicationVersion: env.APP_VERSION,
+            applicationVersion: IMAGE_TAG,
             applicationComponent: env.COMPONENT,
-            artifactFileName: env.ZIP_PATH,
-            artifactFileSizeLimit: 50 * 1024 * 1024 // i.e., 50MB cap
+            artifactFileName: env.APP_NAME,
+            artifactFileSizeLimit: 50 * 1024 * 1024
           )
         }
       }
     }
 
-    stage('Publish to Artifactory') {
+    stage('Docker Hub Login & Push') {
       steps {
-        jf "rt bce ${APP_NAME} ${APP_VERSION}"
-        jf "rt u ${ZIP_PATH} ${REPO}/dotnet/${APP_VERSION}/ --flat=true"
-        jf "rt bp ${APP_NAME} ${APP_VERSION}"
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-jpiay', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+          sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
+
+          // Push both versioned and latest tags
+          sh """
+            docker push ${DOCKERHUB_REPO}:${IMAGE_TAG}
+            docker push ${DOCKERHUB_REPO}:latest
+          """
+        }
       }
     }
 
-    stage('Report Release to DevOps Portal') {
+    stage('Report Release') {
       steps {
         script {
           reportArtifactRelease(
             applicationName: env.APP_NAME,
-            applicationVersion: env.APP_VERSION,
+            applicationVersion: env.FULL_VERSION,
             applicationComponent: env.COMPONENT,
-            repositoryName: env.REGISTRY_HOST,
-            artifactName: "${COMPONENT}/${APP_VERSION}/${ZIP_PATH}",
-            tags: env.APP_VERSION,
-            artifactURL: "${ARTIFACTORY_BASE}/${ARTIFACT_PATH}"
+            repositoryName: 'Docker Hub',
+            artifactName: "${env.DOCKERHUB_REPO}:${env.IMAGE_TAG}",
+            tags: env.IMAGE_TAG,
+            artifactURL: "https://hub.docker.com/r/${env.DOCKERHUB_REPO}"
           )
         }
       }

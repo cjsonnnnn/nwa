@@ -53,24 +53,28 @@ pipeline {
             patch = params.PATCH.toInteger()
             echo "Using manually provided patch version: ${patch}"
           } else {
-            // Auto-increment based on previous build
+            // Auto-increment based on previous build's display name (e.g., "v1.2.3")
             def lastBuild = currentBuild.rawBuild.getPreviousSuccessfulBuild()
             if (lastBuild != null) {
-              def lastPatch = lastBuild.getEnvironment(listener).get('PATCH')
-              if (lastPatch?.isInteger()) {
-                patch = lastPatch.toInteger() + 1
+              def lastName = lastBuild.getDisplayName()
+              def matcher = lastName =~ /v\d+\.\d+\.(\d+)/
+              if (matcher.matches()) {
+                patch = matcher[0][1].toInteger() + 1
+                echo "Auto-incremented patch from last build: ${patch}"
+              } else {
+                patch = 1
+                echo "Previous build name didn't match version pattern, starting from patch: ${patch}"
               }
             } else {
-              patch = 1  // Starting patch version if no previous builds
+              patch = 1
+              echo "No previous build found, starting from patch: ${patch}"
             }
-            echo "Auto-incremented patch version: ${patch}"
           }
 
           env.PATCH = patch.toString()
           env.FULL_VERSION = "${major}.${minor}.${patch}"
           echo "Resolved version: ${env.FULL_VERSION}"
 
-          // 🔖 Set the build name in Jenkins UI
           currentBuild.displayName = "v${env.FULL_VERSION}"
         }
       }

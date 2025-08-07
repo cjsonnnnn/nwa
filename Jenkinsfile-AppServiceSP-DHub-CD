@@ -1,4 +1,3 @@
-def APP_VERSION = ""
 
 pipeline {
   agent { label 'agent-azure-net' }
@@ -22,7 +21,7 @@ pipeline {
       steps {
         script {
           currentBuild.displayName = "Release-${currentBuild.number}"
-          APP_VERSION = "${params.IMAGE_TAG.tokenize(' ')[0]}"
+          env.APP_VERSION = "${params.IMAGE_TAG.tokenize(' ')[0]}"
         }
       }
     }
@@ -67,22 +66,22 @@ pipeline {
           sh "az account show"
 
           // 🚀 Deploy Docker image to App Service
-          sh """
-            az webapp config container set \
-              --resource-group ${RESOURCE_GROUP} \
-              --name ${targetWebApp} \
-              --container-image-name ${DOCKERHUB_REPO}:${APP_VERSION} \
-              --container-registry-url https://index.docker.io
-          """
-          echo "✔️ Deployed ${DOCKERHUB_REPO}:${APP_VERSION} to ${targetWebApp}"
+          // sh """
+          //   az webapp config container set \
+          //     --resource-group ${RESOURCE_GROUP} \
+          //     --name ${targetWebApp} \
+          //     --container-image-name ${DOCKERHUB_REPO}:${env.APP_VERSION} \
+          //     --container-registry-url https://index.docker.io
+          // """
+          echo "✔️ Deployed ${DOCKERHUB_REPO}:${env.APP_VERSION} to ${targetWebApp}"
 
           // 🧾 Report deployment to DevOps Portal
-          reportDeployOperation(
-            targetService: params.DEPLOY_ENV,
-            applicationName: env.APP_NAME,
-            applicationVersion: APP_VERSION,
-            tags: APP_VERSION
-          )
+          // reportDeployOperation(
+          //   targetService: params.DEPLOY_ENV,
+          //   applicationName: env.APP_NAME,
+          //   applicationVersion: env.APP_VERSION,
+          //   tags: env.APP_VERSION
+          // )
         }
       }
     }

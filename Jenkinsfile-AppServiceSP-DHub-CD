@@ -3,6 +3,7 @@ pipeline {
 
   options {
     buildDiscarder(logRotator(numToKeepStr: '5'))
+    skipDefaultCheckout(true)
   }
 
   parameters {
@@ -52,10 +53,10 @@ pipeline {
         script {
           // 🗺 Map environment to App Service name
           def webAppMap = [
-            DEVL:    "NWAAppServiceCodeTEST",
-            TEST:    "NWAAppServiceCodeTEST",
-            STAGING: "NWAAppServiceCodeTEST",
-            PROD:    "NWAAppServiceCodeTEST"
+            DEVL:    "NWAAppServiceContainerTEST",
+            TEST:    "NWAAppServiceContainerTEST",
+            STAGING: "NWAAppServiceContainerTEST",
+            PROD:    "NWAAppServiceContainerTEST"
           ]
           def targetWebApp = webAppMap[params.DEPLOY_ENV]
           if (!targetWebApp) {

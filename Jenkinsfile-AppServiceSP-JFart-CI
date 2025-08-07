@@ -68,72 +68,75 @@ pipeline {
           env.PATCH = patch.toString()
           env.FULL_VERSION = "${major}.${minor}.${patch}"
           echo "Resolved version: ${env.FULL_VERSION}"
+
+          // 🔖 Set the build name in Jenkins UI
+          currentBuild.displayName = "v${env.FULL_VERSION}"
         }
       }
     }
 
-    stage('Build and Package') {
-      steps {
-        script {
-          if (!params.IMAGE_TAG) {
-            error "IMAGE_TAG is required"
-          }
-        }
-        sh "pwd"
-        sh "ls -la"
-        sh "ls -la $HOME"
+    // stage('Build and Package') {
+    //   steps {
+    //     script {
+    //       if (!params.IMAGE_TAG) {
+    //         error "IMAGE_TAG is required"
+    //       }
+    //     }
+    //     sh "pwd"
+    //     sh "ls -la"
+    //     sh "ls -la $HOME"
 
-        // ⚙️ Set server to use 
-        jf 'c use jfart-fos-1'
+    //     // ⚙️ Set server to use 
+    //     jf 'c use jfart-fos-1'
 
-        // 🧪 sanity check connectivity
-        jf 'rt ping'
+    //     // 🧪 sanity check connectivity
+    //     jf 'rt ping'
 
-        // 🔨 Restore and build the .NET project
-        retry(3) {
-          sh "dotnet restore"
-          sh "dotnet publish -c Release -o publish"
-        }
+    //     // 🔨 Restore and build the .NET project
+    //     retry(3) {
+    //       sh "dotnet restore"
+    //       sh "dotnet publish -c Release -o publish"
+    //     }
 
-        // 📦 Zip published files
-        sh "cd publish && zip -r ../${ZIP_PATH} . && cd .."
-        sh "ls -lh ${ZIP_PATH}"
+    //     // 📦 Zip published files
+    //     sh "cd publish && zip -r ../${ZIP_PATH} . && cd .."
+    //     sh "ls -lh ${ZIP_PATH}"
 
-        // Report the build and its produced artifact
-        script {
-          reportBuild(
-            applicationName: env.APP_NAME,
-            applicationVersion: env.APP_VERSION,
-            applicationComponent: env.COMPONENT,
-            artifactFileName: env.ZIP_PATH,
-            artifactFileSizeLimit: 50 * 1024 * 1024 // i.e., 50MB cap
-          )
-        }
-      }
-    }
+    //     // Report the build and its produced artifact
+    //     script {
+    //       reportBuild(
+    //         applicationName: env.APP_NAME,
+    //         applicationVersion: env.APP_VERSION,
+    //         applicationComponent: env.COMPONENT,
+    //         artifactFileName: env.ZIP_PATH,
+    //         artifactFileSizeLimit: 50 * 1024 * 1024
+    //       )
+    //     }
+    //   }
+    // }
 
-    stage('Publish to Artifactory') {
-      steps {
-        jf "rt bce ${APP_NAME} ${APP_VERSION}"
-        jf "rt u ${ZIP_PATH} ${REPO}/dotnet/${APP_VERSION}/ --flat=true"
-        jf "rt bp ${APP_NAME} ${APP_VERSION}"
-      }
-    }
+    // stage('Publish to Artifactory') {
+    //   steps {
+    //     jf "rt bce ${APP_NAME} ${APP_VERSION}"
+    //     jf "rt u ${ZIP_PATH} ${REPO}/dotnet/${APP_VERSION}/ --flat=true"
+    //     jf "rt bp ${APP_NAME} ${APP_VERSION}"
+    //   }
+    // }
 
-    stage('Report Release to DevOps Portal') {
-      steps {
-        script {
-          reportArtifactRelease(
-            applicationName: env.APP_NAME,
-            applicationVersion: env.APP_VERSION,
-            applicationComponent: env.COMPONENT,
-            repositoryName: env.REGISTRY_HOST,
-            artifactName: "${COMPONENT}/${APP_VERSION}/${ZIP_PATH}",
-            tags: env.APP_VERSION,
-            artifactURL: "${ARTIFACTORY_BASE}/${ARTIFACT_PATH}"
-          )
-        }
-      }
-    }
+    // stage('Report Release to DevOps Portal') {
+    //   steps {
+    //     script {
+    //       reportArtifactRelease(
+    //         applicationName: env.APP_NAME,
+    //         applicationVersion: env.APP_VERSION,
+    //         applicationComponent: env.COMPONENT,
+    //         repositoryName: env.REGISTRY_HOST,
+    //         artifactName: "${COMPONENT}/${APP_VERSION}/${ZIP_PATH}",
+    //         tags: env.APP_VERSION,
+    //         artifactURL: "${ARTIFACTORY_BASE}/${ARTIFACT_PATH}"
+    //       )
+    //     }
+    //   }
+    // }
   }
 }

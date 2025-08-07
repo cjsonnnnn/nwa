@@ -22,6 +22,8 @@ pipeline {
         script {
           currentBuild.displayName = "Release-${currentBuild.number}"
           env.APP_VERSION = "${params.IMAGE_TAG.tokenize(' ')[0]}"
+          echo "🏷️ IMAGE_TAG.tokenize(' '): ${params.IMAGE_TAG.tokenize(' ')}"
+          echo "🏷️ IMAGE_TAG.tokenize(' ')[0]: ${params.IMAGE_TAG.tokenize(' ')[0]}"
           echo "🏷️ APP_VERSION: ${env.APP_VERSION}"
           echo "🏷️ IMAGE_TAG: ${params.IMAGE_TAG}"
         }

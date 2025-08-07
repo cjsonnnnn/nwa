@@ -1,0 +1,110 @@
+pipeline {
+  agent { label 'agent-azure-net' }
+
+  tools {
+    jfrog 'jfrog-cli'
+  }
+
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '5'))
+  }
+
+  parameters {
+    string(
+      name: 'IMAGE_TAG',
+      description: 'Version tag (used for .NET publish ZIP and artifact versioning)'
+    )
+    choice(
+      name: 'DEPLOY_ENV',
+      choices: ['STAGING', 'PROD', 'DEVL', 'TEST'],
+      description: 'Select target environment for deployment'
+    )
+  }
+
+  environment {
+    APP_NAME = "simple-dotnet-app"
+    APP_VERSION = "${params.IMAGE_TAG}"
+    AZURE_APP_ID = credentials('azure-app-id')
+    AZURE_SECRET_KEY = credentials('azure-secret-key')
+    AZURE_TENANT_ID = credentials('azure-tenant-id')
+    RESOURCE_GROUP = "BelugaBoxResourceGroup01"
+    WEBAPP_NAME = "NWAAppServiceCodeTEST"
+  }
+
+  stages {
+    stage('Approve for Production') {
+      when {
+        expression { params.DEPLOY_ENV == 'PROD' }
+      }
+      steps {
+        script {
+          timeout(time: 1, unit: 'HOURS') {
+            input message: "Approve deployment to Production?", ok: "Yes, deploy", 
+                  submitter: "manager"
+          }
+        }
+      }
+    }
+
+    stage('Deploy to Azure App Service') {
+      steps {
+        sh "git --version"
+        sh "which git"
+        sh "pwd"
+        sh "ls -la"
+        sh "ls -la $HOME"
+
+        // 🔐 Log in to Azure using Service Principal...
+        sh "az version"
+        sh '''
+          az login --service-principal \
+            --username "$AZURE_APP_ID" \
+            --password "$AZURE_SECRET_KEY" \
+            --tenant "$AZURE_TENANT_ID"
+        '''
+        sh "az account show"
+
+        // ⚙️ Set server to use 
+        jf 'c use jfart-fos-1'
+
+        // 🔽 Download published ZIP from Artifactory
+        retry(3) {
+          jf "rt dl example-repo-local/dotnet/${params.IMAGE_TAG}/app.zip --flat=true"
+        }
+        sh "ls -la"
+
+        // 🚀 Deploy the JAR to App Service
+        sh """
+          az webapp deploy \
+            --resource-group ${RESOURCE_GROUP} \
+            --name ${WEBAPP_NAME} \
+            --src-path app.zip \
+            --type zip
+        """
+
+        script {
+          // map display name to actual targetService label
+          def envMap = [
+            DEVL:    'env-devl',
+            STAGING: 'env-staging',
+            TEST:    'env-test',
+            PROD:    'env-prod'
+          ]
+          def targetService = envMap[params.DEPLOY_ENV]
+          if (!targetService) {
+            error "Unknown deployment environment: ${params.DEPLOY_ENV}"
+          }
+          echo "Deploying to ${params.DEPLOY_ENV} (DevOps Portal label: ${targetService})"
+
+          // Report deployment to DevOps Portal
+          reportDeployOperation(
+            targetService: targetService,
+            applicationName: env.APP_NAME,
+            applicationVersion: env.APP_VERSION,
+            tags: env.APP_VERSION
+          )
+        }
+      }
+    }
+  }
+}

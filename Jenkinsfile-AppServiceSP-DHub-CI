@@ -11,8 +11,19 @@ pipeline {
 
   parameters {
     string(
-      name: 'IMAGE_TAG',
-      description: 'Version tag (used for .NET publish ZIP and artifact versioning)'
+      name: 'MAJOR_VERSION',
+      defaultValue: '1',
+      description: 'The major version number of the build (e.g., 1 for v1.x.x)'
+    )
+    string(
+      name: 'MINOR_VERSION',
+      defaultValue: '1',
+      description: 'The minor version number of the build (e.g., 0 for v1.0.x)'
+    )
+    string(
+      name: 'PATCH',
+      defaultValue: '',
+      description: 'Optional: Manually override the patch version (leave blank to auto-increment)'
     )
   }
 
@@ -25,9 +36,42 @@ pipeline {
     REGISTRY_HOST = "jfrog.fata-organa.com"
     REPO = "example-repo-local"
     ZIP_PATH = "app.zip"
+    VERSION_FILE = 'version.txt'
   }
 
   stages {
+    stage('Prepare Version') {
+      steps {
+        script {
+          def major = params.MAJOR_VERSION
+          def minor = params.MINOR_VERSION
+          def patch = 0
+
+          if (params.PATCH?.trim()) {
+            // Use manual input
+            patch = params.PATCH.toInteger()
+            echo "Using manually provided patch version: ${patch}"
+          } else {
+            // Auto-increment based on previous build
+            def lastBuild = currentBuild.rawBuild.getPreviousSuccessfulBuild()
+            if (lastBuild != null) {
+              def lastPatch = lastBuild.getEnvironment(listener).get('PATCH')
+              if (lastPatch?.isInteger()) {
+                patch = lastPatch.toInteger() + 1
+              }
+            } else {
+              patch = 1  // Starting patch version if no previous builds
+            }
+            echo "Auto-incremented patch version: ${patch}"
+          }
+
+          env.PATCH = patch.toString()
+          env.FULL_VERSION = "${major}.${minor}.${patch}"
+          echo "Resolved version: ${env.FULL_VERSION}"
+        }
+      }
+    }
+
     stage('Build and Package') {
       steps {
         script {

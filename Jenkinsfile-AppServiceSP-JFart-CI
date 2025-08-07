@@ -1,0 +1,139 @@
+pipeline {
+  agent { label 'agent-azure-net' }
+
+  tools {
+    jfrog 'jfrog-cli'
+  }
+
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '5'))
+  }
+
+  parameters {
+    string(
+      name: 'MAJOR_VERSION',
+      defaultValue: '1',
+      description: 'The major version number of the build (e.g., 1 for v1.x.x)'
+    )
+    string(
+      name: 'MINOR_VERSION',
+      defaultValue: '1',
+      description: 'The minor version number of the build (e.g., 0 for v1.0.x)'
+    )
+    string(
+      name: 'PATCH',
+      defaultValue: '',
+      description: 'Optional: Manually override the patch version (leave blank to auto-increment)'
+    )
+  }
+
+  environment {
+    APP_NAME = "simple-dotnet-app"
+    APP_VERSION = "${params.IMAGE_TAG}"
+    ARTIFACT_PATH = "${REPO}/dotnet/${APP_VERSION}/${ZIP_PATH}"
+    ARTIFACTORY_BASE = "https://${REGISTRY_HOST}/artifactory"
+    COMPONENT = "reporting-service"
+    REGISTRY_HOST = "jfrog.fata-organa.com"
+    REPO = "example-repo-local"
+    ZIP_PATH = "app.zip"
+    VERSION_FILE = 'version.txt'
+  }
+
+  stages {
+    stage('Prepare Version') {
+      steps {
+        script {
+          def major = params.MAJOR_VERSION
+          def minor = params.MINOR_VERSION
+          def patch = 0
+
+          if (params.PATCH?.trim()) {
+            // Use manual input
+            patch = params.PATCH.toInteger()
+            echo "Using manually provided patch version: ${patch}"
+          } else {
+            // Auto-increment based on previous build
+            def lastBuild = currentBuild.rawBuild.getPreviousSuccessfulBuild()
+            if (lastBuild != null) {
+              def lastPatch = lastBuild.getEnvironment(listener).get('PATCH')
+              if (lastPatch?.isInteger()) {
+                patch = lastPatch.toInteger() + 1
+              }
+            } else {
+              patch = 1  // Starting patch version if no previous builds
+            }
+            echo "Auto-incremented patch version: ${patch}"
+          }
+
+          env.PATCH = patch.toString()
+          env.FULL_VERSION = "${major}.${minor}.${patch}"
+          echo "Resolved version: ${env.FULL_VERSION}"
+        }
+      }
+    }
+
+    stage('Build and Package') {
+      steps {
+        script {
+          if (!params.IMAGE_TAG) {
+            error "IMAGE_TAG is required"
+          }
+        }
+        sh "pwd"
+        sh "ls -la"
+        sh "ls -la $HOME"
+
+        // ⚙️ Set server to use 
+        jf 'c use jfart-fos-1'
+
+        // 🧪 sanity check connectivity
+        jf 'rt ping'
+
+        // 🔨 Restore and build the .NET project
+        retry(3) {
+          sh "dotnet restore"
+          sh "dotnet publish -c Release -o publish"
+        }
+
+        // 📦 Zip published files
+        sh "cd publish && zip -r ../${ZIP_PATH} . && cd .."
+        sh "ls -lh ${ZIP_PATH}"
+
+        // Report the build and its produced artifact
+        script {
+          reportBuild(
+            applicationName: env.APP_NAME,
+            applicationVersion: env.APP_VERSION,
+            applicationComponent: env.COMPONENT,
+            artifactFileName: env.ZIP_PATH,
+            artifactFileSizeLimit: 50 * 1024 * 1024 // i.e., 50MB cap
+          )
+        }
+      }
+    }
+
+    stage('Publish to Artifactory') {
+      steps {
+        jf "rt bce ${APP_NAME} ${APP_VERSION}"
+        jf "rt u ${ZIP_PATH} ${REPO}/dotnet/${APP_VERSION}/ --flat=true"
+        jf "rt bp ${APP_NAME} ${APP_VERSION}"
+      }
+    }
+
+    stage('Report Release to DevOps Portal') {
+      steps {
+        script {
+          reportArtifactRelease(
+            applicationName: env.APP_NAME,
+            applicationVersion: env.APP_VERSION,
+            applicationComponent: env.COMPONENT,
+            repositoryName: env.REGISTRY_HOST,
+            artifactName: "${COMPONENT}/${APP_VERSION}/${ZIP_PATH}",
+            tags: env.APP_VERSION,
+            artifactURL: "${ARTIFACTORY_BASE}/${ARTIFACT_PATH}"
+          )
+        }
+      }
+    }
+  }
+}

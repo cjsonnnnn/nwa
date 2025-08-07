@@ -20,7 +20,7 @@ pipeline {
     stage('Prepare Version') {
       steps {
         script {
-          currentBuild.displayName = "${params.IMAGE_TAG.tokenize(' ')[0]}"
+          currentBuild.displayName = "Release-${currentBuild.number}"
           env.APP_VERSION = "${params.IMAGE_TAG.tokenize(' ')[0]}"
         }
       }

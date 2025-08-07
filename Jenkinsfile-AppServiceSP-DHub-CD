@@ -6,14 +6,6 @@ pipeline {
     skipDefaultCheckout(true)
   }
 
-  parameters {
-    choice(
-      name: 'DEPLOY_ENV',
-      choices: ['DEVL', 'TEST', 'STAGING', 'PROD'],
-      description: 'Target environment'
-    )
-  }
-
   environment {
     APP_NAME = "nwa"
     APP_VERSION = ""

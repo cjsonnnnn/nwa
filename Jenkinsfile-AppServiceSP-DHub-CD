@@ -20,6 +20,7 @@ pipeline {
     stage('Prepare Version') {
       steps {
         script {
+          echo "🏷️ IMAGE_TAG: ${params.IMAGE_TAG}"
           currentBuild.displayName = "Release-${currentBuild.number}"
           env.APP_VERSION = "${params.IMAGE_TAG.tokenize(' ')[0]}"
         }
@@ -70,8 +71,8 @@ pipeline {
             az webapp config container set \
               --resource-group ${RESOURCE_GROUP} \
               --name ${targetWebApp} \
-              --docker-custom-image-name ${DOCKERHUB_REPO}:${env.APP_VERSION} \
-              --docker-registry-server-url https://index.docker.io
+              --container-image-name ${DOCKERHUB_REPO}:${env.APP_VERSION} \
+              --container-registry-url https://index.docker.io
           """
           echo "✔️ Deployed ${DOCKERHUB_REPO}:${env.APP_VERSION} to ${targetWebApp}"
 

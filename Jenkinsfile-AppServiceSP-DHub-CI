@@ -32,7 +32,7 @@ pipeline {
             echo "Using manually provided patch version: ${patch}"
           } else {
             // Auto-increment based on previous build's display name (e.g., "1.2.3")
-            def lastBuild = currentBuild.rawBuild.getPreviousSuccessfulBuild()
+            def lastBuild = currentBuild.rawBuild.getPreviousBuild()
             if (lastBuild != null) {
               def lastName = lastBuild.getDisplayName()
               def matcher = lastName =~ /^(\d+)\.(\d+)\.(\d+)$/

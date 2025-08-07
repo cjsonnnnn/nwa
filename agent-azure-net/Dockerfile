@@ -16,7 +16,8 @@ RUN apt-get update && \
         software-properties-common \
         openjdk-17-jdk \
         git \
-        zip && \
+        zip \
+        docker.io && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------
@@ -34,9 +35,9 @@ RUN curl -sSL https://packages.microsoft.com/config/debian/12/packages-microsoft
     apt-get install -y dotnet-sdk-8.0 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Switch back to Jenkins user
-USER jenkins
-
 # Set Java environment variables
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH="$JAVA_HOME/bin:$PATH"
+
+# Switch back to Jenkins user
+USER jenkins

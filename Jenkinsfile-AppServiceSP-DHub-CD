@@ -70,17 +70,17 @@ pipeline {
             az webapp config container set \
               --resource-group ${RESOURCE_GROUP} \
               --name ${targetWebApp} \
-              --docker-custom-image-name ${DOCKERHUB_REPO}:${params.IMAGE_TAG} \
+              --docker-custom-image-name ${DOCKERHUB_REPO}:${env.APP_VERSION} \
               --docker-registry-server-url https://index.docker.io
           """
-          echo "✔️ Deployed ${DOCKERHUB_REPO}:${params.IMAGE_TAG} to ${targetWebApp}"
+          echo "✔️ Deployed ${DOCKERHUB_REPO}:${env.APP_VERSION} to ${targetWebApp}"
 
           // 🧾 Report deployment to DevOps Portal
           reportDeployOperation(
             targetService: params.DEPLOY_ENV,
             applicationName: env.APP_NAME,
-            applicationVersion: params.IMAGE_TAG,
-            tags: params.IMAGE_TAG
+            applicationVersion: env.APP_VERSION,
+            tags: env.APP_VERSION
           )
         }
       }

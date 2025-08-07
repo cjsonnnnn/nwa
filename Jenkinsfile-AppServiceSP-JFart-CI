@@ -7,6 +7,7 @@ pipeline {
 
   options {
     buildDiscarder(logRotator(numToKeepStr: '5'))
+    skipDefaultCheckout(true)
   }
 
   parameters {
@@ -72,6 +73,12 @@ pipeline {
           // 🔖 Set the build name in Jenkins UI
           currentBuild.displayName = "v${env.FULL_VERSION}"
         }
+      }
+    }
+
+    stage('Checkout') {
+      steps {
+        checkout scm
       }
     }
 

@@ -1,0 +1,90 @@
+def APP_VERSION = ""
+
+pipeline {
+  agent { label 'agent-azure-net' }
+
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '5'))
+    skipDefaultCheckout(true)
+  }
+
+  environment {
+    APP_NAME = "nwa"
+    DOCKERHUB_REPO = "jpiay/${APP_NAME}"
+    AZURE_APP_ID = credentials('azure-app-id')
+    AZURE_SECRET_KEY = credentials('azure-secret-key')
+    AZURE_TENANT_ID = credentials('azure-tenant-id')
+    RESOURCE_GROUP = "BelugaBoxResourceGroup01"
+  }
+
+  stages {
+    stage('Prepare Version') {
+      steps {
+        script {
+          currentBuild.displayName = "Release-${currentBuild.number}"
+          APP_VERSION = "${params.IMAGE_TAG.tokenize(' ')[0]}"
+        }
+      }
+    }
+
+    stage('Approval for Production') {
+      when {
+        expression { params.DEPLOY_ENV == 'PROD' }
+      }
+      steps {
+        script {
+          timeout(time: 1, unit: 'HOURS') {
+            input message: "Approve deployment to Production?",
+                  ok: "Deploy Now", submitter: "manager"
+          }
+        }
+      }
+    }
+
+    stage('Deploy Docker Image to Azure') {
+      steps {
+        script {
+          // 🗺 Map environment to App Service name
+          def webAppMap = [
+            DEVL:    "NWAAppServiceContainerTEST",
+            TEST:    "NWAAppServiceContainerTEST",
+            STAGING: "NWAAppServiceContainerTEST",
+            PROD:    "NWAAppServiceContainerTEST"
+          ]
+          def targetWebApp = webAppMap[params.DEPLOY_ENV]
+          if (!targetWebApp) {
+            error "Unknown DEPLOY_ENV: ${params.DEPLOY_ENV}"
+          }
+
+          // 🔐 Login to Azure via service principal
+          sh "az version"
+          sh '''
+            az login --service-principal \
+              --username "$AZURE_APP_ID" \
+              --password "$AZURE_SECRET_KEY" \
+              --tenant "$AZURE_TENANT_ID"
+          '''
+          sh "az account show"
+
+          // 🚀 Deploy Docker image to App Service
+          sh """
+            az webapp config container set \
+              --resource-group ${RESOURCE_GROUP} \
+              --name ${targetWebApp} \
+              --container-image-name ${DOCKERHUB_REPO}:${APP_VERSION} \
+              --container-registry-url https://index.docker.io
+          """
+          echo "✔️ Deployed ${DOCKERHUB_REPO}:${APP_VERSION} to ${targetWebApp}"
+
+          // 🧾 Report deployment to DevOps Portal
+          reportDeployOperation(
+            targetService: params.DEPLOY_ENV,
+            applicationName: env.APP_NAME,
+            applicationVersion: APP_VERSION,
+            tags: APP_VERSION
+          )
+        }
+      }
+    }
+  }
+}

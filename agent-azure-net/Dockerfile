@@ -20,6 +20,9 @@ RUN apt-get update && \
         docker.io && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Create docker group if it doesn't exist
+RUN groupadd -g 988 docker || true && usermod -aG docker jenkins
+
 # ---------------------------------------------
 # Install Azure CLI (via Microsoft official method)
 # ---------------------------------------------

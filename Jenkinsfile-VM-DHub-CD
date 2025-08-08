@@ -1,3 +1,8 @@
+def remote=[:]
+remote.name = 'vm-lab3'
+remote.host = '192.168.18.23'
+remote.allowAnyHosts = true
+
 pipeline {
   agent { label 'agent-azure-net' }
 
@@ -39,28 +44,13 @@ pipeline {
     stage('Deploy Docker Image to Azure') {
       steps {
         script {
-          // Build remote host config using Jenkins credentials
-          def remote = [
-            name: "vm-lab3",
-            host: "192.168.18.23",
-            allowAnyHosts: true,
-            user: env.PI_CREDS_USR,
-            password: env.PI_CREDS_PSW,
-            port: 22
-          ]
-
-          echo "🚀 Pulling image: ${DOCKERHUB_REPO}:${APP_VERSION}"
-          sshCommand remote: remote, command: "docker pull ${DOCKERHUB_REPO}:${APP_VERSION}"
-
-          echo "🛑 Stopping old container..."
-          sshCommand remote: remote, command: "docker stop ${APP_NAME} || true"
-          sshCommand remote: remote, command: "docker rm ${APP_NAME} || true"
-
-          echo "▶️ Starting new container..."
-          sshCommand remote: remote, command: "docker run -d --name ${APP_NAME} -p 8080:80 ${DOCKERHUB_REPO}:${APP_VERSION}"
-
-          echo "✔️ Deployment completed on VM."
+          remote.user=env.PI_CREDS_USR
+          remote.password=env.PI_CREDS_PSW
         }
+        sshCommand(remote: remote, command: "sudo docker pull ${DOCKERHUB_REPO}:${APP_VERSION}")
+        sshCommand(remote: remote, command: "sudo docker stop ${APP_NAME} || true")
+        sshCommand(remote: remote, command: "sudo docker rm ${APP_NAME} || true")
+        sshCommand(remote: remote, command: "sudo docker run -d --name ${APP_NAME} -p 8080:80 ${DOCKERHUB_REPO}:${APP_VERSION}")
       }
     }
   }

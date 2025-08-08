@@ -9,8 +9,6 @@ pipeline {
   environment {
     APP_NAME = "nwa"
     DOCKERHUB_REPO = "jpiay/${APP_NAME}"
-    VM_HOST = "lab3@192.168.18.23"
-    VM_SSH = credentials('ssh-vm-lab3')
   }
 
   stages {
@@ -40,34 +38,23 @@ pipeline {
     stage('Deploy Docker Image to Azure') {
       steps {
         script {
-          // 🔒 Create SSH key file securely
-          writeFile file: 'vm_key.pem', text: VM_SSH
-          sh 'chmod 600 vm_key.pem'
+          sshagent(['ssh-vm-lab3']) {
+            sh """
+              ssh -o StrictHostKeyChecking=no lab3@192.168.18.23 << 'EOF'
+                echo "🚀 Pulling image: ${DOCKERHUB_REPO}:${APP_VERSION}"
+                docker pull ${DOCKERHUB_REPO}:${APP_VERSION}
 
-          // 💨 SSH into VM and deploy container
-          sh """
-            ssh -i vm_key.pem -o StrictHostKeyChecking=no ${VM_HOST} << 'EOF'
-              echo "🚀 Pulling image: ${DOCKERHUB_REPO}:${APP_VERSION}"
-              docker pull ${DOCKERHUB_REPO}:${APP_VERSION}
+                echo "🛑 Stopping old container..."
+                docker stop ${APP_NAME} || true
+                docker rm ${APP_NAME} || true
 
-              echo "🛑 Stopping old container..."
-              docker stop ${APP_NAME} || true
-              docker rm ${APP_NAME} || true
-
-              echo "▶️ Starting new container..."
-              docker run -d --name ${APP_NAME} -p 8080:80 ${DOCKERHUB_REPO}:${APP_VERSION}
-
-              echo "✔️ Deployment completed on VM."
-            EOF
-          """
-
-          // 🧾 Report deployment to DevOps Portal
-          reportDeployOperation(
-            targetService: params.DEPLOY_ENV,
-            applicationName: env.APP_NAME,
-            applicationVersion: env.APP_VERSION,
-            tags: env.APP_VERSION
-          )
+                echo "▶️ Starting new container..."
+                docker run -d --name ${APP_NAME} -p 8080:80 ${DOCKERHUB_REPO}:${APP_VERSION}
+                
+                echo "✔️ Deployment completed on VM."
+              EOF
+            """
+          }
         }
       }
     }

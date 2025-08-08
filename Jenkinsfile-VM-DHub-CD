@@ -9,7 +9,7 @@ pipeline {
   environment {
     APP_NAME = "nwa"
     DOCKERHUB_REPO = "jpiay/${APP_NAME}"
-    VM_HOST = "lab3@vm-lab3"
+    VM_HOST = "lab3@192.168.18.23"
     VM_SSH = credentials('ssh-vm-lab3')
   }
 

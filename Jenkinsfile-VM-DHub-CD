@@ -1,3 +1,8 @@
+def remote=[:]
+remote.name = 'vm-lab3'
+remote.host = '192.168.18.23'
+remote.allowAnyHosts = true
+
 pipeline {
   agent { label 'agent-azure-net' }
 
@@ -9,6 +14,7 @@ pipeline {
   environment {
     APP_NAME = "nwa"
     DOCKERHUB_REPO = "jpiay/${APP_NAME}"
+    PI_CREDS=credentials('ssh-vm-lab3')
   }
 
   stages {
@@ -38,23 +44,20 @@ pipeline {
     stage('Deploy Docker Image to Azure') {
       steps {
         script {
-          sshagent(['ssh-vm-lab3']) {
-            sh """
-              ssh -o StrictHostKeyChecking=no lab3@192.168.18.23 << 'EOF'
-                echo "🚀 Pulling image: ${DOCKERHUB_REPO}:${APP_VERSION}"
-                docker pull ${DOCKERHUB_REPO}:${APP_VERSION}
+          remote.user=env.PI_CREDS_USR
+          remote.password=env.PI_CREDS_PSW
 
-                echo "🛑 Stopping old container..."
-                docker stop ${APP_NAME} || true
-                docker rm ${APP_NAME} || true
+          echo "🚀 Pulling image: ${DOCKERHUB_REPO}:${APP_VERSION}"
+          sshCommand remote: remote, command: "docker pull ${DOCKERHUB_REPO}:${APP_VERSION}"
 
-                echo "▶️ Starting new container..."
-                docker run -d --name ${APP_NAME} -p 8080:80 ${DOCKERHUB_REPO}:${APP_VERSION}
-                
-                echo "✔️ Deployment completed on VM."
-              EOF
-            """
-          }
+          echo "🛑 Stopping old container..."
+          sshCommand remote: remote, command: "docker stop ${APP_NAME} || true"
+          sshCommand remote: remote, command: "docker rm ${APP_NAME} || true"
+
+          echo "▶️ Starting new container..."
+          sshCommand remote: remote, command: "docker run -d --name ${APP_NAME} -p 8080:80 ${DOCKERHUB_REPO}:${APP_VERSION}"
+
+          echo "✔️ Deployment completed on VM."
         }
       }
     }

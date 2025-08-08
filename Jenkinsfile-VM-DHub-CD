@@ -1,5 +1,3 @@
-def APP_VERSION = ""
-
 pipeline {
   agent { label 'agent-azure-net' }
 
@@ -11,10 +9,8 @@ pipeline {
   environment {
     APP_NAME = "nwa"
     DOCKERHUB_REPO = "jpiay/${APP_NAME}"
-    AZURE_APP_ID = credentials('azure-app-id')
-    AZURE_SECRET_KEY = credentials('azure-secret-key')
-    AZURE_TENANT_ID = credentials('azure-tenant-id')
-    RESOURCE_GROUP = "BelugaBoxResourceGroup01"
+    VM_HOST = "lab3@vm-lab3"
+    VM_SSH = credentials('ssh-vm-lab3')
   }
 
   stages {
@@ -22,7 +18,7 @@ pipeline {
       steps {
         script {
           currentBuild.displayName = "Release-${currentBuild.number}"
-          APP_VERSION = "${params.IMAGE_TAG.tokenize(' ')[0]}"
+          env.APP_VERSION = "${params.IMAGE_TAG.tokenize(' ')[0]}"
         }
       }
     }
@@ -44,44 +40,33 @@ pipeline {
     stage('Deploy Docker Image to Azure') {
       steps {
         script {
-          // 🗺 Map environment to App Service name
-          def webAppMap = [
-            DEVL:    "NWAAppServiceContainerTEST",
-            TEST:    "NWAAppServiceContainerTEST",
-            STAGING: "NWAAppServiceContainerTEST",
-            PROD:    "NWAAppServiceContainerTEST"
-          ]
-          def targetWebApp = webAppMap[params.DEPLOY_ENV]
-          if (!targetWebApp) {
-            error "Unknown DEPLOY_ENV: ${params.DEPLOY_ENV}"
-          }
+          // 🔒 Create SSH key file securely
+          writeFile file: 'vm_key.pem', text: VM_SSH
+          sh 'chmod 600 vm_key.pem'
 
-          // 🔐 Login to Azure via service principal
-          sh "az version"
-          sh '''
-            az login --service-principal \
-              --username "$AZURE_APP_ID" \
-              --password "$AZURE_SECRET_KEY" \
-              --tenant "$AZURE_TENANT_ID"
-          '''
-          sh "az account show"
-
-          // 🚀 Deploy Docker image to App Service
+          // 💨 SSH into VM and deploy container
           sh """
-            az webapp config container set \
-              --resource-group ${RESOURCE_GROUP} \
-              --name ${targetWebApp} \
-              --container-image-name ${DOCKERHUB_REPO}:${APP_VERSION} \
-              --container-registry-url https://index.docker.io
+            ssh -i vm_key.pem -o StrictHostKeyChecking=no ${VM_HOST} << 'EOF'
+              echo "🚀 Pulling image: ${DOCKERHUB_REPO}:${APP_VERSION}"
+              docker pull ${DOCKERHUB_REPO}:${APP_VERSION}
+
+              echo "🛑 Stopping old container..."
+              docker stop ${APP_NAME} || true
+              docker rm ${APP_NAME} || true
+
+              echo "▶️ Starting new container..."
+              docker run -d --name ${APP_NAME} -p 8080:80 ${DOCKERHUB_REPO}:${APP_VERSION}
+
+              echo "✔️ Deployment completed on VM."
+            EOF
           """
-          echo "✔️ Deployed ${DOCKERHUB_REPO}:${APP_VERSION} to ${targetWebApp}"
 
           // 🧾 Report deployment to DevOps Portal
           reportDeployOperation(
             targetService: params.DEPLOY_ENV,
             applicationName: env.APP_NAME,
-            applicationVersion: APP_VERSION,
-            tags: APP_VERSION
+            applicationVersion: env.APP_VERSION,
+            tags: env.APP_VERSION
           )
         }
       }

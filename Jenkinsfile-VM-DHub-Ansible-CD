@@ -70,7 +70,7 @@ pipeline {
           ),
           sshUserPrivateKey(
             credentialsId: 'ssh-ansible-ctrl',
-            keyFileVariable: 'SSH_KEY'
+            keyFileVariable: 'SSH_PRIVATE_KEY'
           )
         ]) {
           sh '''
@@ -82,7 +82,7 @@ pipeline {
             ansible-playbook playbooks/cd/nmf/deploy.yml \
               -i inventory \
               --limit vm-lab1 \
-              --private-key $SSH_KEY \
+              --private-key $SSH_PRIVATE_KEY \
               -e DOCKERHUB_USERNAME=${DOCKERHUB_USER} \
               -e DOCKERHUB_PASSWORD=${DOCKERHUB_PASS} \
               -e DOCKERHUB_REPO=${DOCKERHUB_REPO} \

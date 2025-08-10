@@ -8,7 +8,7 @@ pipeline {
   }
 
   environment {
-    APP_NAME = "nwa"
+    APP_NAME = "nmf-warehouse-backend-netcore-dev"
     DOCKERHUB_REPO = "fataorganadocker/${APP_NAME}"
   }
 
@@ -59,7 +59,7 @@ pipeline {
             cp ssh/known_hosts_nmf ~/.ssh/known_hosts
             chmod 644 ~/.ssh/known_hosts
 
-            ansible-playbook -vvv playbooks/cd/nmf/backend/deploy.yml \
+            ansible-playbook -vv playbooks/cd/nmf/backend/deploy.yml \
               -i inventory \
               --limit vm-lab1 \
               --private-key $SSH_PRIVATE_KEY \

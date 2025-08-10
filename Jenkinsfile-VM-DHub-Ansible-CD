@@ -77,6 +77,7 @@ pipeline {
             echo "--- Environment before ansible-playbook ---"
             cd fos-ansible
             ls -al
+            ls -al ~/.ssh
 
             ansible-playbook playbooks/cd/nmf/deploy.yml \
               -i inventory \

@@ -81,6 +81,7 @@ pipeline {
             mkdir -p ~/.ssh
             cp ssh/known_hosts_nmf ~/.ssh/known_hosts
             chmod 644 ~/.ssh/known_hosts
+            cat ~/.ssh/known_hosts
 
             echo "--- Testing SSH connection ---"
             ssh -i $SSH_PRIVATE_KEY -o StrictHostKeyChecking=yes lab1@192.168.18.21 hostname

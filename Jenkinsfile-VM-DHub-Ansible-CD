@@ -86,7 +86,7 @@ pipeline {
             ssh-keyscan -H 192.168.18.21 >> ~/.ssh/known_hosts
 
             echo "--- Testing SSH connection ---"
-            ssh -i $SSH_PRIVATE_KEY -o StrictHostKeyChecking=yes 192.168.18.21 hostname
+            ssh -i $SSH_PRIVATE_KEY -o StrictHostKeyChecking=yes lab1@192.168.18.21 hostname
 
             echo "--- Running ansible-playbook ---"
             ansible-playbook playbooks/cd/nmf/deploy.yml \

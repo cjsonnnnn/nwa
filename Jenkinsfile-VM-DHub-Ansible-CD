@@ -56,10 +56,11 @@ pipeline {
         ]) {
           sh '''
             mkdir -p ~/.ssh
-            cp fos-ansible/ssh/known_hosts_nmf ~/.ssh/known_hosts
+            cd fos-ansible
+            cp ssh/known_hosts_nmf ~/.ssh/known_hosts
             chmod 644 ~/.ssh/known_hosts
 
-            ansible-playbook fos-ansible/playbooks/cd/nmf/deploy.yml \
+            ansible-playbook playbooks/cd/nmf/deploy.yml \
               -i inventory \
               --limit vm-lab1 \
               --private-key $SSH_PRIVATE_KEY \

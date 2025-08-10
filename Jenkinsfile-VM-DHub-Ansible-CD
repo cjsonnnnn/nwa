@@ -78,12 +78,8 @@ pipeline {
             cd fos-ansible
             ls -al
             ls -al ~/.ssh
-
-            echo "--- Checking known_hosts ---"
-            cat ~/.ssh/known_hosts || echo "known_hosts not found"
-
-            echo "--- Adding 192.168.18.21 to known_hosts ---"
-            ssh-keyscan -H 192.168.18.21 >> ~/.ssh/known_hosts
+            mkdir -p ~/.ssh
+            cp ssh/known_hosts_nmf ~/.ssh/known_hosts
 
             echo "--- Testing SSH connection ---"
             ssh -i $SSH_PRIVATE_KEY -o StrictHostKeyChecking=yes lab1@192.168.18.21 hostname

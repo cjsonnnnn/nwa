@@ -3,6 +3,7 @@ pipeline {
 
   options {
     skipDefaultCheckout(true)
+    timeout(time: 30, unit: 'MINUTES')
   }
 
   environment {
@@ -15,45 +16,32 @@ pipeline {
     stage('Prepare Version') {
       steps {
         script {
-          echo "=== Stage: Prepare Version ==="
-          echo "Build Number: ${currentBuild.number}"
           currentBuild.displayName = "Release-${currentBuild.number}"
-          env.APP_VERSION = "${params.IMAGE_TAG.tokenize(' ')[0]}"
-          echo "APP_VERSION = ${env.APP_VERSION}"
+          env.APP_VERSION = params.IMAGE_TAG.tokenize(' ')[0]
+          echo "Preparing version: ${env.APP_VERSION}"
         }
       }
     }
 
     stage('Approval for Production') {
-      when {
-        expression { params.DEPLOY_ENV == 'PROD' }
-      }
+      when { expression { params.DEPLOY_ENV == 'PROD' } }
       steps {
-        script {
-          echo "=== Stage: Approval for Production ==="
-          echo "DEPLOY_ENV = ${params.DEPLOY_ENV}"
-          timeout(time: 1, unit: 'HOURS') {
-            input message: "Approve deployment to Production?",
-                  ok: "Deploy Now", submitter: "manager"
-          }
+        timeout(time: 20, unit: 'MINUTES') {
+          input message: "Approve deployment to Production?", ok: "Deploy Now", submitter: "manager"
         }
       }
     }
-    
-    stage('Prepare SSH & Checkout Ansible Repo') {
+
+    stage('Setup SSH and Checkout Ansible') {
       steps {
-        echo "=== Stage: Prepare SSH & Checkout Ansible Repo ==="
         withCredentials([sshUserPrivateKey(credentialsId: 'ssh-ansible-ctrl', keyFileVariable: 'SSH_PRIVATE_KEY')]) {
           sh '''
-            echo "--- Inside SSH setup ---"
             mkdir -p ~/.ssh
             chmod 700 ~/.ssh
             cp $SSH_PRIVATE_KEY ~/.ssh/id_rsa
             chmod 600 ~/.ssh/id_rsa
             ssh-keyscan github.com >> ~/.ssh/known_hosts
-            git clone -v -b main git@github.com:jpiay/fos-ansible.git
-            cd fos-ansible
-            ls -al
+            git clone -b main git@github.com:jpiay/fos-ansible.git
           '''
         }
       }
@@ -61,33 +49,16 @@ pipeline {
 
     stage('Deploy to Server') {
       steps {
-        echo "=== Stage: Deploy to Server ==="
         withCredentials([
-          usernamePassword(
-            credentialsId: 'dockerhub-jpiay',
-            usernameVariable: 'DOCKERHUB_USER',
-            passwordVariable: 'DOCKERHUB_PASS'
-          ),
-          sshUserPrivateKey(
-            credentialsId: 'ssh-ansible-ctrl',
-            keyFileVariable: 'SSH_PRIVATE_KEY'
-          )
+          usernamePassword(credentialsId: 'dockerhub-jpiay', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS'),
+          sshUserPrivateKey(credentialsId: 'ssh-ansible-ctrl', keyFileVariable: 'SSH_PRIVATE_KEY')
         ]) {
           sh '''
-            echo "--- Environment before ansible-playbook ---"
-            cd fos-ansible
-            ls -al
-            ls -al ~/.ssh
             mkdir -p ~/.ssh
             cp ssh/known_hosts_nmf ~/.ssh/known_hosts
             chmod 644 ~/.ssh/known_hosts
-            cat ~/.ssh/known_hosts
 
-            echo "--- Testing SSH connection ---"
-            ssh -i $SSH_PRIVATE_KEY -o StrictHostKeyChecking=yes lab1@192.168.18.21 hostname
-
-            echo "--- Running ansible-playbook ---"
-            ansible-playbook playbooks/cd/nmf/deploy.yml \
+            ansible-playbook fos-ansible/playbooks/cd/nmf/deploy.yml \
               -i inventory \
               --limit vm-lab1 \
               --private-key $SSH_PRIVATE_KEY \

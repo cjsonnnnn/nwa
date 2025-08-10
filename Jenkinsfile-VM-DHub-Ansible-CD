@@ -9,8 +9,7 @@ pipeline {
 
   environment {
     APP_NAME = "nwa"
-    DOCKERHUB_REPO = "jpiay/${APP_NAME}"
-    PI_CREDS = credentials('ssh-vm-jenkins')
+    DOCKERHUB_REPO = "fataorganadocker/${APP_NAME}"
   }
 
   stages {
@@ -51,7 +50,7 @@ pipeline {
     stage('Deploy to Server') {
       steps {
         withCredentials([
-          usernamePassword(credentialsId: 'dockerhub-jpiay', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS'),
+          usernamePassword(credentialsId: 'dockerhub-service', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS'),
           sshUserPrivateKey(credentialsId: 'ssh-ansible-ctrl', keyFileVariable: 'SSH_PRIVATE_KEY')
         ]) {
           sh '''

@@ -52,6 +52,7 @@ pipeline {
             chmod 600 ~/.ssh/id_rsa
             ssh-keyscan github.com >> ~/.ssh/known_hosts
             git clone -v -b main git@github.com:jpiay/fos-ansible.git
+            cd fos-ansible
             ls -al
           '''
         }

@@ -55,7 +55,7 @@ pipeline {
         ]) {
           sh '''
             mkdir -p ~/.ssh
-            cp ssh/known_hosts_nmf ~/.ssh/known_hosts
+            cp fos-ansible/ssh/known_hosts_nmf ~/.ssh/known_hosts
             chmod 644 ~/.ssh/known_hosts
 
             ansible-playbook fos-ansible/playbooks/cd/nmf/deploy.yml \

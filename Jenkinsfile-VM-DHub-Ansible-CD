@@ -67,6 +67,7 @@ pipeline {
                                           passwordVariable: 'DOCKERHUB_PASS')]) {
           sh '''
             echo "--- Environment before ansible-playbook ---"
+            cd fos-ansible
             ls -al
             ansible-playbook playbooks/cd/nmf/deploy.yml \
               -i inventory \

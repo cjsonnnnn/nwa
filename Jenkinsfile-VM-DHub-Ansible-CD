@@ -81,7 +81,7 @@ pipeline {
 
             ansible-playbook playbooks/cd/nmf/deploy.yml \
               -i inventory \
-              --limit vm-lab1 \
+              --limit 192.168.18.21 \
               --private-key $SSH_KEY \
               -e DOCKERHUB_USERNAME=${DOCKERHUB_USER} \
               -e DOCKERHUB_PASSWORD=${DOCKERHUB_PASS} \

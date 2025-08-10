@@ -62,16 +62,26 @@ pipeline {
     stage('Deploy to Server') {
       steps {
         echo "=== Stage: Deploy to Server ==="
-        withCredentials([usernamePassword(credentialsId: 'dockerhub-jpiay',
-                                          usernameVariable: 'DOCKERHUB_USER',
-                                          passwordVariable: 'DOCKERHUB_PASS')]) {
+        withCredentials([
+          usernamePassword(
+            credentialsId: 'dockerhub-jpiay',
+            usernameVariable: 'DOCKERHUB_USER',
+            passwordVariable: 'DOCKERHUB_PASS'
+          ),
+          sshUserPrivateKey(
+            credentialsId: 'ssh-ansible-ctrl',
+            keyFileVariable: 'SSH_KEY'
+          )
+        ]) {
           sh '''
             echo "--- Environment before ansible-playbook ---"
             cd fos-ansible
             ls -al
+
             ansible-playbook playbooks/cd/nmf/deploy.yml \
               -i inventory \
               --limit localhost \
+              --private-key $SSH_KEY \
               -e DOCKERHUB_USERNAME=${DOCKERHUB_USER} \
               -e DOCKERHUB_PASSWORD=${DOCKERHUB_PASS} \
               -e DOCKERHUB_REPO=${DOCKERHUB_REPO} \

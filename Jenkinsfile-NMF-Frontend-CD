@@ -13,12 +13,14 @@ pipeline {
   }
 
   stages {
-    stage('Prepare Version') {
+    stage('Prepare Version & Variables') {
       steps {
         script {
           currentBuild.displayName = "Release-${currentBuild.number}"
           env.APP_VERSION = params.IMAGE_TAG.tokenize(' ')[0]
+          env.LIMIT = "NMF-${params.DEPLOY_ENV}"
           echo "APP VERSION: ${env.APP_VERSION}"
+          echo "LIMIT: ${env.LIMIT}"
         }
       }
     }
@@ -29,10 +31,6 @@ pipeline {
         timeout(time: 20, unit: 'MINUTES') {
           input message: "Approve deployment to Production?", ok: "Deploy Now", submitter: "manager"
         }
-      }
-      script {
-        env.LIMIT = "NMF-${params.DEPLOY_ENV}"
-        echo "LIMIT: ${env.LIMIT}"
       }
     }
 

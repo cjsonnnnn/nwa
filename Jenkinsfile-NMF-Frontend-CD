@@ -1,0 +1,76 @@
+pipeline {
+  agent { label 'agent-ansible-net' }
+
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '50'))
+    skipDefaultCheckout(true)
+    timeout(time: 30, unit: 'MINUTES')
+  }
+
+  environment {
+    APP_NAME = "nmf-warehouse-ui-dev"
+    DOCKERHUB_REPO = "fataorganadocker/${APP_NAME}"
+  }
+
+  stages {
+    stage('Prepare Version') {
+      steps {
+        script {
+          currentBuild.displayName = "Release-${currentBuild.number}"
+          env.APP_VERSION = params.IMAGE_TAG.tokenize(' ')[0]
+          echo "Preparing version: ${env.APP_VERSION}"
+        }
+      }
+    }
+
+    stage('Approval for Production') {
+      when { expression { params.DEPLOY_ENV == 'PROD' } }
+      steps {
+        timeout(time: 20, unit: 'MINUTES') {
+          input message: "Approve deployment to Production?", ok: "Deploy Now", submitter: "manager"
+        }
+      }
+    }
+
+    stage('Setup SSH and Checkout Ansible') {
+      steps {
+        withCredentials([sshUserPrivateKey(credentialsId: 'ssh-ansible-ctrl', keyFileVariable: 'SSH_PRIVATE_KEY')]) {
+          sh '''
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+            cp $SSH_PRIVATE_KEY ~/.ssh/id_rsa
+            chmod 600 ~/.ssh/id_rsa
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            git clone -b main git@github.com:jpiay/fos-ansible.git
+          '''
+        }
+      }
+    }
+
+    stage('Deploy to Server') {
+      steps {
+        withCredentials([
+          usernamePassword(credentialsId: 'dockerhub-service', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS'),
+          sshUserPrivateKey(credentialsId: 'ssh-ansible-ctrl', keyFileVariable: 'SSH_PRIVATE_KEY')
+        ]) {
+          sh '''
+            mkdir -p ~/.ssh
+            cd fos-ansible
+            cp ssh/known_hosts_nmf ~/.ssh/known_hosts
+            chmod 644 ~/.ssh/known_hosts
+
+            ansible-playbook -vv playbooks/cd/nmf/frontend/deploy.yml \
+              -i inventory \
+              --limit vm-lab1 \
+              --private-key $SSH_PRIVATE_KEY \
+              -e DOCKERHUB_USERNAME=${DOCKERHUB_USER} \
+              -e DOCKERHUB_PASSWORD=${DOCKERHUB_PASS} \
+              -e DOCKERHUB_REPO=${DOCKERHUB_REPO} \
+              -e APP_NAME=${APP_NAME} \
+              -e APP_VERSION=${APP_VERSION}
+          '''
+        }
+      }
+    }
+  }
+}

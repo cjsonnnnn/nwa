@@ -61,7 +61,7 @@ pipeline {
 
             ansible-playbook -vv playbooks/cd/nmf/frontend/deploy.yml \
               -i inventory \
-              --limit vm-lab1 \
+              --limit NMF-${params.DEPLOY_ENV} \
               --private-key $SSH_PRIVATE_KEY \
               -e DOCKERHUB_USERNAME=${DOCKERHUB_USER} \
               -e DOCKERHUB_PASSWORD=${DOCKERHUB_PASS} \

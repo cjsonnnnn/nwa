@@ -30,19 +30,22 @@ pipeline {
           input message: "Approve deployment to Production?", ok: "Deploy Now", submitter: "manager"
         }
       }
+      script {
+        env.LIMIT = "NMF-${params.DEPLOY_ENV}"
+      }
     }
 
     stage('Setup SSH and Checkout Ansible') {
       steps {
         withCredentials([sshUserPrivateKey(credentialsId: 'ssh-ansible-ctrl', keyFileVariable: 'SSH_PRIVATE_KEY')]) {
-          sh """
+          sh '''
             mkdir -p ~/.ssh
             chmod 700 ~/.ssh
             cp $SSH_PRIVATE_KEY ~/.ssh/id_rsa
             chmod 600 ~/.ssh/id_rsa
             ssh-keyscan github.com >> ~/.ssh/known_hosts
             git clone -b main git@github.com:jpiay/fos-ansible.git
-          """
+          '''
         }
       }
     }
@@ -53,7 +56,7 @@ pipeline {
           usernamePassword(credentialsId: 'dockerhub-service', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS'),
           sshUserPrivateKey(credentialsId: 'ssh-ansible-ctrl', keyFileVariable: 'SSH_PRIVATE_KEY')
         ]) {
-          sh """
+          sh '''
             mkdir -p ~/.ssh
             cd fos-ansible
             cp ssh/known_hosts_nmf ~/.ssh/known_hosts
@@ -61,14 +64,14 @@ pipeline {
 
             ansible-playbook -vv playbooks/cd/nmf/frontend/deploy.yml \
               -i inventory \
-              --limit NMF-${params.DEPLOY_ENV} \
+              --limit ${LIMIT} \
               --private-key $SSH_PRIVATE_KEY \
               -e DOCKERHUB_USERNAME=${DOCKERHUB_USER} \
               -e DOCKERHUB_PASSWORD=${DOCKERHUB_PASS} \
               -e DOCKERHUB_REPO=${DOCKERHUB_REPO} \
               -e APP_NAME=${APP_NAME} \
               -e APP_VERSION=${APP_VERSION}
-          """
+          '''
         }
       }
     }

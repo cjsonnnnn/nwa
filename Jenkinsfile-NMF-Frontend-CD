@@ -18,7 +18,7 @@ pipeline {
         script {
           currentBuild.displayName = "Release-${currentBuild.number}"
           env.APP_VERSION = params.IMAGE_TAG.tokenize(' ')[0]
-          echo "Preparing version: ${env.APP_VERSION}"
+          echo "APP VERSION: ${env.APP_VERSION}"
         }
       }
     }
@@ -32,6 +32,7 @@ pipeline {
       }
       script {
         env.LIMIT = "NMF-${params.DEPLOY_ENV}"
+        echo "LIMIT: ${env.LIMIT}"
       }
     }
 
